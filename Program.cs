@@ -56,18 +56,29 @@ internal class Program
                 Command = "uname -a",
                 User = "vivlim",
             });
-            this.universe.UpsertItem(new SshCommandJsonTable("systemctl list-units --type service --full --all --output json --no-pager") {
-                Name = "seedling systemd units",
+            this.universe.UpsertItem(new SshInteractiveShell() {
+                Name = "seedling top",
                 Group = "ssh",
                 Host = "seedling",
                 User = "vivlim",
             });
-            this.universe.UpsertItem(new SystemdUnits() {
-                Name = "seedling systemd units2",
-                Group = "ssh",
-                Host = "seedling",
-                User = "vivlim",
-            });
+            //this.universe.UpsertItem(new SshCommandJsonTable("systemctl list-units --type service --full --all --output json --no-pager") {
+            //    Name = "seedling systemd units",
+            //    Group = "ssh",
+            //    Host = "seedling",
+            //    User = "vivlim",
+            //});
+            string[] machines = ["seedling", "mediarama", "zulip"];
+            foreach (var machine in machines)
+            {
+                this.universe.UpsertItem(new SystemdUnits() {
+                    Name = $"{machine} systemd units",
+                    Group = "ssh",
+                    Host = machine,
+                    User = "vivlim",
+                });
+
+            }
 
             this.treeView = new TreeView<IInspectable>()
             {
@@ -188,6 +199,7 @@ internal class Program
                     Application.MainLoop.Invoke(() =>
                     {
                         this.treeView!.RebuildTree();
+                        this.treeView.ExpandAll();
                     });
                 }
             }
