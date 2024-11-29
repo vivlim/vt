@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -13,19 +14,29 @@ internal class Universe : IInspectable
 {
     public string? Group => null;
 
-    public List<IInspectable> Items { get; } = new();
+    public IEnumerable<IInspectable> Items => this.items.Values;
 
-    public async IAsyncEnumerable<View> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    private readonly ConcurrentDictionary<string, IInspectable> items = new();
+
+    public string Key => nameof(Universe);
+
+    public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        yield return new Label()
+        yield return new InspectionView(new Label()
         {
             Text = "universe..."
-        };
+        });
     }
 
     public override string ToString()
     {
         return "/";
+    }
+
+    public void UpsertItem(IInspectable item)
+    {
+        var key = item.Key;
+        items[key] = item;
     }
 }
 
@@ -68,12 +79,14 @@ public class ViewGroupNode : IInspectable
 
     public string Name { get; init; }
 
-    public async IAsyncEnumerable<View> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    public string Key => $"{this.Name}[]";
+
+    public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        yield return new Label()
+        yield return new InspectionView(new Label()
         {
-            Text = "node with items"
-        };
+            Text = $"{this.Name}: {this.Items.Count}",
+        });
     }
 
     public override string ToString()
@@ -96,7 +109,7 @@ internal class GroupedUniverseTreeBuilder(Universe universe) : UniverseViewTreeB
             yield return new ViewGroupNode()
             {
                 Name = group.Key,
-                Items = group.ToList()
+                Items = group.OrderBy(i => i.ToString()).ToList()
             };
         }
     }

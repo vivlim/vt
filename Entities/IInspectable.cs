@@ -10,7 +10,14 @@ namespace vt.Entities;
 
 public interface IInspectable
 {
+    public string Key { get; }
     public string? Group { get; }
 
-    public IAsyncEnumerable<View> GetViewsAsync(CancellationToken cancellationToken);
+    public IAsyncEnumerable<InspectionPart> GetViewsAsync(CancellationToken cancellationToken);
 }
+
+public record InspectionPart();
+
+public record InspectionView(View view) : InspectionPart;
+
+public record AddInspectables(IInspectable[] NewInspectables) : InspectionPart;

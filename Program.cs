@@ -17,6 +17,7 @@ internal class Program
     private readonly object changeInspectingLock = new object();
     private CancellationTokenSource inspectingCts = new();
 
+    private TreeView<IInspectable>? treeView;
     private Window? inspector;
 
     private void Start()
@@ -42,14 +43,33 @@ internal class Program
                 Height = Dim.Fill() - 1
             };
 
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd a", Group = "group a" });
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd b", Group = "group a" });
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd c", Group = "group a" });
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd d", Group = "group b" });
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd e", Group = "group b" });
-            this.universe.Items.Add(new InspectableAsyncCommand() { Name = "cmd f", Group = "group b" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd a", Group = "group a" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd b", Group = "group a" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd c", Group = "group a" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd d", Group = "group b" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd e", Group = "group b" });
+            this.universe.UpsertItem(new AsyncInspectable() { Name = "cmd f", Group = "group b" });
+            this.universe.UpsertItem(new SshCommandText() {
+                Name = "seedling",
+                Group = "ssh",
+                Host = "seedling",
+                Command = "uname -a",
+                User = "vivlim",
+            });
+            this.universe.UpsertItem(new SshCommandJsonTable("systemctl list-units --type service --full --all --output json --no-pager") {
+                Name = "seedling systemd units",
+                Group = "ssh",
+                Host = "seedling",
+                User = "vivlim",
+            });
+            this.universe.UpsertItem(new SystemdUnits() {
+                Name = "seedling systemd units2",
+                Group = "ssh",
+                Host = "seedling",
+                User = "vivlim",
+            });
 
-            var treeView = new TreeView<IInspectable>()
+            this.treeView = new TreeView<IInspectable>()
             {
                 X = Pos.Center(),
                 Y = Pos.Center(),
@@ -58,9 +78,9 @@ internal class Program
                 TreeBuilder = new GroupedUniverseTreeBuilder(this.universe),
             };
 
-            treeView.ObjectActivated += TreeView_ObjectActivated;
-            treeView.AddObject(universe);
-            treeView.ExpandAll();
+            this.treeView.ObjectActivated += TreeView_ObjectActivated;
+            this.treeView.AddObject(universe);
+            this.treeView.ExpandAll();
 
             this.inspector = new Window("details")
             {
@@ -96,10 +116,11 @@ internal class Program
         lock (this.changeInspectingLock)
         {
             var oldCts = this.inspectingCts;
-            this.inspectingCts = new();
+            var newCts = new CancellationTokenSource();
+            this.inspectingCts = newCts;
             oldCts.Cancel();
             oldCts.Dispose();
-            cancellation = this.inspectingCts.Token;
+            cancellation = newCts.Token;
         }
 
         if (this.inspector is null)
@@ -140,19 +161,48 @@ internal class Program
         try
         {
             List<View> addedViews = new();
-            await foreach (var v in inspectable.GetViewsAsync(cancellation))
+            await foreach (var p in inspectable.GetViewsAsync(cancellation))
+            {
+                if (p is InspectionView { view: View v })
+                {
+                    Application.MainLoop.Invoke(() =>
+                    {
+                        addedViews.Add(v);
+                        this.inspector!.Add(v);
+                        /*
+                        var height = addedViews.Select(v => {
+                            v.(out var h);
+                            return h;
+                        }).Sum();
+                        var width = addedViews.Select(v => v.Height);
+                        */
+                    });
+                }
+                else if (p is AddInspectables ai)
+                {
+                    foreach (var item in ai.NewInspectables)
+                    {
+                        this.universe.UpsertItem(item);
+                    }
+
+                    Application.MainLoop.Invoke(() =>
+                    {
+                        this.treeView!.RebuildTree();
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!cancellation.IsCancellationRequested)
             {
                 Application.MainLoop.Invoke(() =>
                 {
-                    addedViews.Add(v);
-                    this.inspector!.Add(v);
-                    /*
-                    var height = addedViews.Select(v => {
-                        v.(out var h);
-                        return h;
-                    }).Sum();
-                    var width = addedViews.Select(v => v.Height);
-                    */
+                    this.inspector.Add(new Label()
+                    {
+                        Text = $"Caught exception: {ex}",
+                        AutoSize = true
+                    });
                 });
             }
         }
