@@ -10,16 +10,16 @@ namespace XtermSharp {
 	public class SelectionService {
 		readonly PointComparer comparer;
 		readonly Terminal terminal;
-		readonly NStack.ustring nullString;
-		readonly NStack.ustring spaceString;
+		readonly Utf8String nullString;
+		readonly Utf8String spaceString;
 		private bool active;
 
 		public SelectionService (Terminal terminal)
 		{
 			this.terminal = terminal;
 			comparer = new PointComparer ();
-			nullString = NStack.ustring.Make (CharData.Null.Rune);
-			spaceString = NStack.ustring.Make (" ");
+			nullString = Utf8String.From(CharData.Null.Rune);
+			spaceString = Utf8String.From(' ');
 		}
 
 		/// <summary>

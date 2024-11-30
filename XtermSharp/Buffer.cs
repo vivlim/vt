@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Diagnostics;
-using NStack;
+
 
 namespace XtermSharp {
 	/// <summary>
@@ -320,7 +320,7 @@ namespace XtermSharp {
 		/// <param name="trimRight">If set to <c>true</c> trim whitespace to the right.</param>
 		/// <param name="startCol">The column to start at.</param>
 		/// <param name="endCol">The column to end at.</param>
-		public ustring TranslateBufferLineToString (int lineIndex, bool trimRight, int startCol = 0, int endCol = -1)
+		public Utf8String TranslateBufferLineToString (int lineIndex, bool trimRight, int startCol = 0, int endCol = -1)
 		{
 			try {
 				var line = lines [lineIndex];
@@ -328,7 +328,7 @@ namespace XtermSharp {
 				return line.TranslateToString (trimRight, startCol, endCol);
 			} catch ( Exception ex)
 			{
-				return ustring.Empty;
+				return Utf8String.Empty;
 			}
 		}
 
