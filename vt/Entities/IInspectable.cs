@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
+using vt.Ui;
 
 namespace vt.Entities;
 
@@ -21,3 +22,5 @@ public record InspectionPart();
 public record InspectionView(View view) : InspectionPart;
 
 public record AddInspectables(IInspectable[] NewInspectables) : InspectionPart;
+
+public record SpawnWindow(ViewWindow Window) : InspectionPart;

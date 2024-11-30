@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Terminal.Gui;
+using vt.Ui;
 using XtermSharp;
 
 namespace vt.Ssh;
@@ -53,7 +53,7 @@ public static class Sudo
             return password;
         }
 
-        var pd = new PromptDialog($"enter password for {username}@{machineName}");
+        var pd = new PromptDialog($"sudo: enter password for {username}@{machineName}");
         password = await pd.Show();
 
         if (password is not null)
@@ -63,69 +63,4 @@ public static class Sudo
 
         return password;
     }
-}
-
-public class PromptDialog(string message)
-{
-    public async Task<string?> Show()
-    {
-        await Task.CompletedTask;
-        var tcs = new TaskCompletionSource<string?>();
-
-        Application.MainLoop.Invoke(() =>
-        {
-            var d = new Dialog()
-            {
-                Width = 50,
-                Height = 10,
-                X = Pos.Center(),
-                Y = Pos.Center(),
-            };
-
-            var l = new Label()
-            {
-                Text = message,
-                X = 1,
-                Y = 1,
-            };
-            d.Add(l);
-            var field = new TextField()
-            {
-                X = 1,
-                Y = 3,
-                Width = Dim.Fill(),
-                Secret = true,
-            };
-            d.Add(field);
-
-            var cancel = new Button()
-            {
-                Text = "cancel",
-            };
-
-            var confirm = new Button()
-            {
-                Text = "confirm",
-            };
-            d.AddButton(confirm);
-            d.AddButton(cancel);
-
-            confirm.Clicked += () =>
-            {
-                tcs.SetResult(field.Text.ToString());
-                Application.RequestStop(d);
-            };
-
-            cancel.Clicked += () =>
-            {
-                tcs.SetResult(null);
-                Application.RequestStop(d);
-            };
-
-            Application.Run(d);
-        });
-
-        return await tcs.Task;
-    }
-
 }

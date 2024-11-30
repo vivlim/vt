@@ -28,9 +28,12 @@ internal class SshCommandJsonTableBase<T>(string command) : IInspectable
 
     public bool BecomeRoot { get; init; } = false;
 
+    protected T? Data { get; set; } = default(T);
+
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var value = await this.GetJsonValue(cancellationToken);
+        this.Data = value;
         await foreach (var p in this.ProduceAsync(value, cancellationToken).WithCancellation(cancellationToken))
         {
             yield return p;
@@ -52,8 +55,11 @@ internal class SshCommandJsonTableBase<T>(string command) : IInspectable
             Width = Dim.Fill(),
             Height = Dim.Fill(),
         };
+        this.SetupTableView(tv);
         yield return new InspectionView(tv);
     }
+
+    protected virtual void SetupTableView(TableView tv) { }
 
     public virtual async Task<T?> GetJsonValue(CancellationToken cancellationToken)
     {

@@ -13,6 +13,7 @@ namespace vt.Entities;
 
 internal class Universe : IInspectable
 {
+    public static Universe Instance { get; private set; } = null!;
     public string? Group => null;
 
     public IEnumerable<IInspectable> Items => this.items.Values;
@@ -25,6 +26,7 @@ internal class Universe : IInspectable
 
     public Universe()
     {
+        Instance = this;
     }
 
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)

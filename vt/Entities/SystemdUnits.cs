@@ -10,12 +10,13 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
+using vt.Ui;
 
 namespace vt.Entities;
 
-internal class SystemdUnits() : SshCommandJsonTableBase<IEnumerable<SystemdUnit>>("systemctl list-units --type service --full --all --output json --no-pager"), IInspectable
+internal class SystemdUnits() : SshCommandJsonTableBase<SystemdUnit[]>("systemctl list-units --type service --full --all --output json --no-pager"), IInspectable
 {
-    public override async IAsyncEnumerable<InspectionPart> ProduceAsync(IEnumerable<SystemdUnit> value, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public override async IAsyncEnumerable<InspectionPart> ProduceAsync(SystemdUnit[] value, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var basePart in base.ProduceAsync(value, cancellationToken).WithCancellation(cancellationToken))
         {
@@ -36,6 +37,22 @@ internal class SystemdUnits() : SshCommandJsonTableBase<IEnumerable<SystemdUnit>
         if (unitCommandInspectables.Length > 0)
         {
             yield return new AddInspectables(unitCommandInspectables);
+        }
+    }
+
+    protected override void SetupTableView(TableView tv)
+    {
+        tv.CellActivated += Tv_CellActivated;
+    }
+
+    private void Tv_CellActivated(TableView.CellActivatedEventArgs obj)
+    {
+        if (obj.Col == 0)
+        {
+            var unit = this.Data[obj.Row];
+
+            var window = new SystemdUnitWindow(unit);
+            Universe.Instance.PartChannel.Writer.TryWrite(new SpawnWindow(window));
         }
     }
 }

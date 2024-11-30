@@ -1,6 +1,7 @@
 ﻿using vt;
 using Terminal.Gui;
 using vt.Entities;
+using vt.Ui;
 
 internal class Program
 {
@@ -100,7 +101,7 @@ internal class Program
                     Group = "ssh",
                     Host = machine,
                     User = "vivlim",
-                    BecomeRoot = true,
+                    //BecomeRoot = true,
                 });
 
             }
@@ -264,6 +265,13 @@ internal class Program
                 Application.MainLoop.Invoke(() =>
                 {
                     this.RebuildTreeAndRestoreExpandState();
+                });
+            }
+            else if (part is SpawnWindow sw)
+            {
+                Application.MainLoop.Invoke(() =>
+                {
+                    Application.Top.Add(sw.Window.CreateWindow());
                 });
             }
         }
