@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
@@ -19,6 +20,12 @@ internal class Universe : IInspectable
     private readonly ConcurrentDictionary<string, IInspectable> items = new();
 
     public string Key => nameof(Universe);
+
+    public Channel<InspectionPart> PartChannel { get; } = Channel.CreateUnbounded<InspectionPart>();
+
+    public Universe()
+    {
+    }
 
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {

@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
+using vt.Ssh;
 
 namespace vt.Entities;
 
@@ -25,9 +26,11 @@ internal class SshCommandJsonTableBase<T>(string command) : IInspectable
 
     public virtual string Command { get; } = command;
 
+    public bool BecomeRoot { get; init; } = false;
+
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var value = await this.GetJsonValue();
+        var value = await this.GetJsonValue(cancellationToken);
         await foreach (var p in this.ProduceAsync(value, cancellationToken).WithCancellation(cancellationToken))
         {
             yield return p;
@@ -52,7 +55,7 @@ internal class SshCommandJsonTableBase<T>(string command) : IInspectable
         yield return new InspectionView(tv);
     }
 
-    public virtual async Task<T> GetJsonValue()
+    public virtual async Task<T?> GetJsonValue(CancellationToken cancellationToken)
     {
         // speed bump to avoid the worst mistake
         if (this.Command.Contains("rm "))
@@ -62,9 +65,25 @@ internal class SshCommandJsonTableBase<T>(string command) : IInspectable
 
         using var client = new SshClient(this.Host, this.User, SshKeySource.Instance.GetKey());
         client.Connect();
-        using SshCommand cmd = client.RunCommand(this.Command);
-        T value = JsonConvert.DeserializeObject<T>(cmd.Result);
-        return value;
+
+        if (!this.BecomeRoot)
+        {
+            using SshCommand cmd = client.RunCommand(this.Command);
+            T? value = JsonConvert.DeserializeObject<T>(cmd.Result);
+            return value;
+        }
+        else
+        {
+            using ShellStream stream = client.CreateShellStream("tty", 80, 24, 800, 600, 1024);
+            bool success = await Sudo.ElevateShellAsync(stream, this.Host, this.User);
+            if (!success)
+            {
+                throw new Exception("Failed to become root");
+            }
+            var resultText = await ShellStreamUtils.ExecuteCommandAsync(stream, this.Command, cancellationToken);
+            T? value = JsonConvert.DeserializeObject<T>(resultText);
+            return value;
+        }
     }
 
     public override string ToString()

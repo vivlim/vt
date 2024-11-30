@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
+using vt.Ssh;
 
 namespace vt.Entities;
 
@@ -23,6 +24,8 @@ internal class SshCommandText : IInspectable
 
     public required string Command { get; init; }
 
+    public bool BecomeRoot { get; init; } = false;
+
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // speed bump to avoid the worst mistake
@@ -33,17 +36,59 @@ internal class SshCommandText : IInspectable
 
         using var client = new SshClient(this.Host, this.User, SshKeySource.Instance.GetKey());
         client.Connect();
-        using SshCommand cmd = client.RunCommand(this.Command);
-        yield return new InspectionView(new TextView
+
+        if (this.BecomeRoot)
         {
-            Text = cmd.Result,
-            AutoSize = true,
-            X = Pos.Center(),
-            Y = Pos.Center(),
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            WordWrap = true,
-        });
+            using ShellStream stream = client.CreateShellStream("tty", 80, 24, 800, 600, 1024);
+            bool success = await Sudo.ElevateShellAsync(stream, this.Host, this.User);
+            if (!success)
+            {
+                throw new Exception("Failed to become root");
+            }
+
+            var output = await ShellStreamUtils.ExecuteCommandAsync(stream, this.Command, cancellationToken);
+            yield return new InspectionView(new TextView
+            {
+                Text = output,
+                AutoSize = true,
+                X = Pos.Center(),
+                Y = Pos.Center(),
+                Width = Dim.Fill(),
+                Height = Dim.Fill(),
+                WordWrap = true,
+            });
+        }
+        else
+        {
+            using SshCommand cmd = client.RunCommand(this.Command);
+
+            if (cmd.ExitStatus != 0)
+            {
+                yield return new InspectionView(new TextView
+                {
+                    Text = $"stdout:\n{cmd.Result}\n\nstderr:\n{cmd.Error}",
+                    AutoSize = true,
+                    X = Pos.Center(),
+                    Y = Pos.Center(),
+                    Width = Dim.Fill(),
+                    Height = Dim.Fill(),
+                    WordWrap = true,
+                });
+            }
+            else
+            {
+                yield return new InspectionView(new TextView
+                {
+                    Text = cmd.Result,
+                    AutoSize = true,
+                    X = Pos.Center(),
+                    Y = Pos.Center(),
+                    Width = Dim.Fill(),
+                    Height = Dim.Fill(),
+                    WordWrap = true,
+                });
+            }
+        }
     }
 
     public override string ToString()

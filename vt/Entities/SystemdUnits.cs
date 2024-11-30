@@ -30,7 +30,8 @@ internal class SystemdUnits() : SshCommandJsonTableBase<IEnumerable<SystemdUnit>
                 User = this.User,
                 Name = u.Unit,
                 Group = $"{this.Host} units: {u.Active}",
-                Command = $"systemctl status {u.Unit} --no-pager"
+                Command = $"systemctl status {u.Unit} --no-pager -l",
+                BecomeRoot = true,
             }).ToArray();
         if (unitCommandInspectables.Length > 0)
         {
@@ -41,9 +42,14 @@ internal class SystemdUnits() : SshCommandJsonTableBase<IEnumerable<SystemdUnit>
 
 public record SystemdUnit
 {
-    public string Unit { get; init; }
-    public string Load { get; init; }
-    public string Active { get; init; }
-    public string Sub { get; init; }
-    public string Description { get; init; }
+    [JsonProperty(Required = Required.Always)]
+    public required string Unit { get; init; }
+    [JsonProperty(Required = Required.Always)]
+    public required string Load { get; init; }
+    [JsonProperty(Required = Required.Always)]
+    public required string Active { get; init; }
+    [JsonProperty(Required = Required.Always)]
+    public required string Sub { get; init; }
+    [JsonProperty(Required = Required.Always)]
+    public required string Description { get; init; }
 }

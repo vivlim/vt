@@ -56,11 +56,35 @@ internal class Program
                 Command = "uname -a",
                 User = "vivlim",
             });
+
+            this.universe.UpsertItem(new SshCommandText() {
+                Name = "zulip",
+                Group = "elevationtest",
+                Host = "zulip",
+                Command = "ls /root",
+                User = "vivlim",
+                BecomeRoot = true,
+            });
             this.universe.UpsertItem(new SshTerminalInspectable() {
                 Name = "seedling top",
                 Group = "ssh",
                 Host = "seedling",
                 User = "vivlim",
+            });
+            this.universe.UpsertItem(new SshTerminalInspectable() {
+                Name = "zulip root term",
+                Group = "ssh",
+                Host = "zulip",
+                User = "vivlim",
+                BecomeRoot = true,
+            });
+            this.universe.UpsertItem(new SshTerminalInspectable() {
+                Name = "seedling root term",
+                Group = "ssh",
+                Host = "seedling",
+                User = "vivlim",
+                BecomeRoot = true,
+                Command = "top",
             });
             //this.universe.UpsertItem(new SshCommandJsonTable("systemctl list-units --type service --full --all --output json --no-pager") {
             //    Name = "seedling systemd units",
@@ -76,6 +100,7 @@ internal class Program
                     Group = "ssh",
                     Host = machine,
                     User = "vivlim",
+                    BecomeRoot = true,
                 });
 
             }
@@ -198,8 +223,7 @@ internal class Program
 
                     Application.MainLoop.Invoke(() =>
                     {
-                        this.treeView!.RebuildTree();
-                        this.treeView.ExpandAll();
+                        this.RebuildTreeAndRestoreExpandState();
                     });
                 }
             }
@@ -222,5 +246,65 @@ internal class Program
         {
             spinnerCts.Cancel();
         }
+    }
+
+    private async Task UpdateUniverseFromChannelAsync(CancellationToken cancellationToken)
+    {
+        var reader = this.universe.PartChannel.Reader;
+        while (await reader.WaitToReadAsync(cancellationToken))
+        {
+            var part = await reader.ReadAsync(cancellationToken);
+            if (part is AddInspectables ai)
+            {
+                foreach (var item in ai.NewInspectables)
+                {
+                    this.universe.UpsertItem(item);
+                }
+
+                Application.MainLoop.Invoke(() =>
+                {
+                    this.RebuildTreeAndRestoreExpandState();
+                });
+            }
+        }
+    }
+
+    private void RebuildTreeAndRestoreExpandState()
+    {
+        this.treeView!.RebuildTree();
+        // stash expand state
+        /* this doesn't actually work.
+        List<IInspectable> expanded = new();
+        foreach (var ui in this.universe.Items)
+        {
+            if (this.treeView!.IsExpanded(ui)) // seems to always return false.
+            {
+                expanded.Add(ui);
+            }
+        }
+
+        this.treeView!.RebuildTree();
+
+        bool anyChange = true;
+        while (expanded.Count > 0 && anyChange)
+        {
+            List<IInspectable> toRemove = new();
+
+            foreach (var i in expanded)
+            {
+                if (this.treeView!.IsExpanded(i))
+                {
+                    toRemove.Add(i);
+                    continue;
+                }
+
+                if (this.treeView!.CanExpand(i))
+                {
+                    this.treeView.Expand(i);
+                    anyChange = true;
+                }
+            }
+        }
+        */
     }
 }

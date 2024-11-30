@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Terminal.Gui;
+using vt.Ssh;
 using XtermSharpTerminalView;
 
 namespace vt;
@@ -14,7 +15,9 @@ public class SshTerminalView : TerminalView
     private const int bufferSize = 1024;
     private readonly IMainLoopDriver mainLoopDriver;
     private readonly SshClient sshClient;
-    public Func<ShellStream, Task>? WithConnection { get; init; }
+    public Func<ShellStream, Task>? OnConnectedAction { get; init; }
+
+    public bool BlockInputs { get; set; } = false;
 
     private ShellStream? currentShellStream = null;
 
@@ -49,6 +52,11 @@ public class SshTerminalView : TerminalView
             {
                 closedCts.Cancel();
             };
+
+            if (this.OnConnectedAction is not null)
+            {
+                await this.OnConnectedAction(shellStream);
+            }
 
             while (!closedCts.IsCancellationRequested)
             {
@@ -90,6 +98,11 @@ public class SshTerminalView : TerminalView
     void SendDataToChild(byte[] data)
     {
         if (this.currentShellStream is null)
+        {
+            return;
+        }
+
+        if (this.BlockInputs)
         {
             return;
         }

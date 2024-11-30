@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using Terminal.Gui.Trees;
+using vt.Ssh;
 
 namespace vt.Entities;
 
@@ -21,6 +22,10 @@ internal class SshTerminalInspectable : IInspectable
     public required string Host { get; init; }
     public required string User { get; init; }
 
+    public bool BecomeRoot { get; init; }
+
+    public string? Command { get; init; }
+
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var client = new SshClient(this.Host, this.User, SshKeySource.Instance.GetKey());
@@ -32,8 +37,37 @@ internal class SshTerminalInspectable : IInspectable
             Y = Pos.Center(),
             Width = Dim.Fill(),
             Height = Dim.Fill(),
+            OnConnectedAction = this.OnConnectedAsync,
         };
         yield return new InspectionView(tv);
+    }
+
+    private async Task OnConnectedAsync(ShellStream stream)
+    {
+        if (this.BecomeRoot)
+        {
+            await this.ElevatePrompt(stream);
+
+            if (this.Command is null)
+            {
+                // Empty line so that we can see the prompt.
+                stream.WriteLine("");
+            }
+        }
+
+        if (this.Command is not null)
+        {
+            stream.WriteLine(this.Command);
+        }
+    }
+
+    private async Task ElevatePrompt(ShellStream stream)
+    {
+        bool success = await Sudo.ElevateShellAsync(stream, this.Host, this.User);
+        if (!success)
+        {
+            throw new Exception("Didn't successfully elevate");
+        }
     }
 
     public override string ToString()
