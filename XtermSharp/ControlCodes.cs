@@ -3,6 +3,12 @@
 namespace XtermSharp {
 	public struct ControlCodes {
 		public static uint NUL = 0x00;
+		public static uint SOH = 0x01;
+		public static uint STX = 0x02;
+		public static uint ETX = 0x03;
+		public static uint EOT = 0x04;
+		public static uint ENQ = 0x05;
+		public static uint ACK = 0x06;
 		public static uint BEL = 0x07;
 		public static uint BS = 0x08;
 		public static uint HT = 0x09;

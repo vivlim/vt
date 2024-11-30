@@ -15,7 +15,7 @@ public static class AnsiColor
             0 => Terminal.Gui.Color.Black,
             1 => Terminal.Gui.Color.Red,
             2 => Terminal.Gui.Color.Green,
-            3 => Terminal.Gui.Color.BrightYellow,
+            3 => Terminal.Gui.Color.Brown,
             4 => Terminal.Gui.Color.Blue,
             5 => Terminal.Gui.Color.Magenta,
             6 => Terminal.Gui.Color.Cyan,

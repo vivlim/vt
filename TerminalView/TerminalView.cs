@@ -135,17 +135,26 @@ public class TerminalView : View, ITerminalDelegate {
 			if ((keyEvent.Key & Key.CtrlMask) == Key.CtrlMask)
 			{
 				var keyWithoutCtrl = keyEvent.Key ^ Key.CtrlMask;
-				if (keyWithoutCtrl >= Key.a && keyWithoutCtrl <= Key.z)
+				if (keyWithoutCtrl >= Key.A && keyWithoutCtrl <= Key.Z)
 				{
-					Send ((byte)keyEvent.Key);
+					byte ctrlKey = (byte)(keyWithoutCtrl - 64);
+					Send (ctrlKey);
 					break;
 				}
 			}
 			if (keyEvent.IsAlt) {
 				Send (0x1b);
 			}
-			var rune = (System.Rune)(uint)keyEvent.Key;
-			var len = System.Rune.RuneLen (rune);
+			byte[] keyBytes = BitConverter.GetBytes((uint)keyEvent.Key);
+			if (!System.Rune.Valid(keyBytes))
+			{
+				// can't send this
+				return false;
+			}
+
+			(System.Rune rune, int len) = System.Rune.DecodeRune(keyBytes);
+
+			//var len = System.Rune.RuneLen (rune);
 			if (len > 0) {
 				var buff = new byte [len];
 				var n = System.Rune.EncodeRune (rune, buff);
