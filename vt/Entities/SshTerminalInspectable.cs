@@ -23,7 +23,7 @@ internal class SshTerminalInspectable : IInspectable
 
     public async IAsyncEnumerable<InspectionPart> GetViewsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using var client = new SshClient(this.Host, this.User, SshKeySource.Instance.GetKey());
+        var client = new SshClient(this.Host, this.User, SshKeySource.Instance.GetKey());
 
         var tv = new SshTerminalView(client)
         {
@@ -34,8 +34,6 @@ internal class SshTerminalInspectable : IInspectable
             Height = Dim.Fill(),
         };
         yield return new InspectionView(tv);
-        await Task.Delay(-1, cancellationToken);
-        client.Disconnect();
     }
 
     public override string ToString()

@@ -18,6 +18,8 @@ public class SshTerminalView : TerminalView
 
     private ShellStream? currentShellStream = null;
 
+    private TaskCompletionSource<(uint rows, uint cols)> initialSizeTcs = new();
+
     public SshTerminalView(SshClient sshClient) : base()
     {
         this.mainLoopDriver = Application.MainLoop.Driver;
@@ -35,7 +37,8 @@ public class SshTerminalView : TerminalView
         try
         {
             await this.sshClient.ConnectAsync(cancellationToken);
-            using ShellStream shellStream = this.sshClient.CreateShellStream("xterm", 80, 24, 800, 600, bufferSize);
+            var initialSize = await this.initialSizeTcs.Task;
+            using ShellStream shellStream = this.sshClient.CreateShellStream("xterm", initialSize.cols, initialSize.rows, 800, 600, bufferSize);
             this.currentShellStream = shellStream;
 
             byte[] buffer = new byte[bufferSize];
@@ -55,7 +58,7 @@ public class SshTerminalView : TerminalView
                 {
                     try
                     {
-                        this.Feed(buffer, bytesRead);
+                this.Feed(buffer, bytesRead);
                         finishFeedTcs.TrySetResult();
                     }
                     catch (Exception ex)
@@ -68,12 +71,19 @@ public class SshTerminalView : TerminalView
         }
         catch (Exception ex)
         {
-
+            // dump the exception into the terminal.
+            var exceptionMessage = AnsiColor.ColorEscapeSequence(Color.Red, Color.Black).Concat(Encoding.ASCII.GetBytes($"\n\ncaught exception: {ex}\n")).ToArray();
+            this.Feed(exceptionMessage, exceptionMessage.Length);
         }
         finally
         {
             this.currentShellStream = null;
             closedCts.Cancel();
+            this.sshClient.Dispose();
+
+            var endMessage = AnsiColor.ColorEscapeSequence(Color.Red, Color.Black).Concat(Encoding.ASCII.GetBytes("\n\n[ connection was closed ]\n")).ToArray();
+
+            this.Feed(endMessage,endMessage.Length);
         }
     }
 
@@ -91,5 +101,13 @@ public class SshTerminalView : TerminalView
 
     void NotifyPtySizeChanged(int cols, int rows) 
     {
+        this.initialSizeTcs.TrySetResult(((uint)rows, (uint)cols));
+        if (this.currentShellStream is null)
+        {
+            return;
+        }
+
+        // Actually handling this is blocked on pr https://github.com/sshnet/SSH.NET/pull/1062.
+        return;
     }
 }
