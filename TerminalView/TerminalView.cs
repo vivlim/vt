@@ -158,7 +158,7 @@ public class TerminalView : View, ITerminalDelegate {
 		return true;
 	}
 
-	void SetAttribute (int attribute)
+	void SetAttribute (int attribute, bool invert)
 	{
 		int bg = attribute & 0x1ff;
 		int fg = (attribute >> 9) & 0x1ff;
@@ -192,7 +192,14 @@ public class TerminalView : View, ITerminalDelegate {
 				cattr |= 0x10000; // A_STANDOUT
 			Driver.SetAttribute (new Terminal.Gui.Attribute (cattr));
 		} else {
-			Driver.SetAttribute (ColorScheme.Normal);
+			if (invert)
+			{
+                Driver.SetAttribute (ColorScheme.HotFocus);
+			}
+			else
+			{
+                Driver.SetAttribute (ColorScheme.Normal);
+			}
 		}
 	}
 
@@ -204,6 +211,9 @@ public class TerminalView : View, ITerminalDelegate {
 		var maxCol = Frame.Width;
 		var maxRow = Frame.Height;
 		var yDisp = terminal.Buffer.YDisp;
+
+		var cursorX = terminal.Buffer.X;
+		var cursorY = terminal.Buffer.Y;
 		
 		for (int row = 0; row < maxRow; row++) {
 			Move (Frame.X, Frame.Y + row);
@@ -212,7 +222,7 @@ public class TerminalView : View, ITerminalDelegate {
 			var line = terminal.Buffer.Lines [row+yDisp];
 			for (int col = 0; col < maxCol; col++) {
 				var ch = line [col];
-				SetAttribute (ch.Attribute);
+				SetAttribute (ch.Attribute, row == cursorY && col == cursorX);
 				System.Rune r;
 
 				if (ch.Code == 0)

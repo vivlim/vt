@@ -16,6 +16,8 @@ public class SshTerminalView : TerminalView
     private readonly SshClient sshClient;
     public Func<ShellStream, Task>? WithConnection { get; init; }
 
+    private ShellStream? currentShellStream = null;
+
     public SshTerminalView(SshClient sshClient) : base()
     {
         this.mainLoopDriver = Application.MainLoop.Driver;
@@ -29,41 +31,61 @@ public class SshTerminalView : TerminalView
 
     private async Task ConnectAsync(CancellationToken cancellationToken)
     {
-        await this.sshClient.ConnectAsync(cancellationToken);
-        using ShellStream shellStream = this.sshClient.CreateShellStream("xterm", 80, 24, 800, 600, bufferSize);
-
-        byte[] buffer = new byte[bufferSize];
-
-        shellStream.WriteLine("top");
-
         using var closedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        shellStream.Closed += (s, e) =>
+        try
         {
-            closedCts.Cancel();
-        };
+            await this.sshClient.ConnectAsync(cancellationToken);
+            using ShellStream shellStream = this.sshClient.CreateShellStream("xterm", 80, 24, 800, 600, bufferSize);
+            this.currentShellStream = shellStream;
 
-        while (!closedCts.IsCancellationRequested)
-        {
-            var bytesRead = await shellStream.ReadAsync(buffer, closedCts.Token);
-            var finishFeedTcs = new TaskCompletionSource();
-            Application.MainLoop.Invoke(() =>
+            byte[] buffer = new byte[bufferSize];
+
+            //shellStream.WriteLine("htop");
+
+            shellStream.Closed += (s, e) =>
             {
-                try
+                closedCts.Cancel();
+            };
+
+            while (!closedCts.IsCancellationRequested)
+            {
+                var bytesRead = await shellStream.ReadAsync(buffer, closedCts.Token);
+                var finishFeedTcs = new TaskCompletionSource();
+                Application.MainLoop.Invoke(() =>
                 {
-                    this.Feed(buffer, bytesRead);
-                    finishFeedTcs.TrySetResult();
-                }
-                catch (Exception ex)
-                {
-                    finishFeedTcs.TrySetException(ex);
-                }
-            });
-            await finishFeedTcs.Task;
+                    try
+                    {
+                        this.Feed(buffer, bytesRead);
+                        finishFeedTcs.TrySetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        finishFeedTcs.TrySetException(ex);
+                    }
+                });
+                await finishFeedTcs.Task;
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+        finally
+        {
+            this.currentShellStream = null;
+            closedCts.Cancel();
         }
     }
 
     void SendDataToChild(byte[] data)
     {
+        if (this.currentShellStream is null)
+        {
+            return;
+        }
+
+        this.currentShellStream.Write(data, 0, data.Length);
+        this.currentShellStream.Flush();
 
     }
 
