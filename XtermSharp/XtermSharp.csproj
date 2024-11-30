@@ -16,7 +16,7 @@
     <Folder Include="InputHandlers\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NStack.Core" Version="0.12.0" />
+    <PackageReference Include="NStack.Core" Version="1.1.1" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Renderer.cs" />

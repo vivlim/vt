@@ -56,7 +56,7 @@ internal class Program
                 Command = "uname -a",
                 User = "vivlim",
             });
-            this.universe.UpsertItem(new SshInteractiveShell() {
+            this.universe.UpsertItem(new SshTerminalInspectable() {
                 Name = "seedling top",
                 Group = "ssh",
                 Host = "seedling",
