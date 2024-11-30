@@ -12,13 +12,13 @@ namespace XtermSharpTerminalView;
 /// Based on XtermSharp's GuiCsHost.TerminalView.
 /// </summary>
 public class TerminalView : View, ITerminalDelegate {
-	internal XtermSharp.Terminal terminal;
+	internal RgbMappingTerminal terminal;
 	bool cursesDriver = Application.Driver.GetType ().Name.IndexOf ("CursesDriver") != -1;
 	bool terminalSupportsUtf8;
 
 	public TerminalView ()
 	{
-		terminal = new XtermSharp.Terminal (this, new TerminalOptions () { Cols = 80, Rows = 25 });
+		terminal = new(this, new TerminalOptions () { Cols = 80, Rows = 25 });
 		CanFocus = true;
 
 		if (cursesDriver)

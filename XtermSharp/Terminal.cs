@@ -680,7 +680,7 @@ namespace XtermSharp {
 
 		}
 
-		public int MatchColor (int r1, int g1, int b1)
+		public virtual int MatchColor (int r1, int g1, int b1)
 		{
 			throw new NotImplementedException ();
 		}
