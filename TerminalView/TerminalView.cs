@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Terminal.Gui;
@@ -15,6 +16,8 @@ public class TerminalView : View, ITerminalDelegate {
 	internal RgbMappingTerminal terminal;
 	bool cursesDriver = Application.Driver.GetType ().Name.IndexOf ("CursesDriver") != -1;
 	bool terminalSupportsUtf8;
+
+	bool mouseEventsIncludePressAndRelease = false;
 
 	public TerminalView ()
 	{
@@ -298,23 +301,123 @@ public class TerminalView : View, ITerminalDelegate {
 
 	public override bool MouseEvent (MouseEvent mouseEvent)
 	{
-		/*
-		if (terminal.MouseEvents) {
+		if (terminal.MouseMode is not MouseMode.Off) {
+
 			var f = mouseEvent.Flags;
 			int button = -1;
-			if (f.HasFlag (MouseFlags.Button1Clicked))
+			int action = -1; // 1: press, 2: release, 3: click
+
+			if (f.HasFlag(MouseFlags.Button1Clicked))
+			{
 				button = 0;
+				action = 3;
+			}
+			if (f.HasFlag (MouseFlags.Button1Pressed))
+			{
+				button = 0;
+				action = 1;
+			}
+			if (f.HasFlag (MouseFlags.Button1Released))
+            {
+                button = 0;
+                action = 2;
+            }
 			if (f.HasFlag (MouseFlags.Button2Clicked))
-				button = 1;
-			if (f.HasFlag (MouseFlags.Button3Clicked))
+            {
+                button = 1;
+                action = 3;
+            }
+			if (f.HasFlag (MouseFlags.Button2Pressed))
+            {
+                button = 1;
+                action = 1;
+            }
+			if (f.HasFlag (MouseFlags.Button2Released))
+            {
+                button = 1;
+                action = 2;
+            }
+			if (f.HasFlag(MouseFlags.Button3Clicked))
+			{
 				button = 2;
+				action = 3;
+			}
+			if (f.HasFlag(MouseFlags.Button3Pressed))
+			{
+				button = 2;
+				action = 1;
+			}
+			if (f.HasFlag(MouseFlags.Button3Released))
+			{
+				button = 2;
+				action = 2;
+			}
+			if (f.HasFlag(MouseFlags.WheeledUp))
+			{
+				var e = terminal.EncodeMouseButton (4, release: false, shift: false, meta: false, control: false);
+                terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+				if (terminal.MouseMode is MouseMode.VT200 or MouseMode.ButtonEventTracking or MouseMode.AnyEvent) {
+					e = terminal.EncodeMouseButton(4, release: true, shift: false, meta: false, control: false);
+					terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+				}
+				return true;
+			}
+			if (f.HasFlag(MouseFlags.WheeledDown))
+			{
+				var e = terminal.EncodeMouseButton (5, release: false, shift: false, meta: false, control: false);
+                terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+				if (terminal.MouseMode is MouseMode.VT200 or MouseMode.ButtonEventTracking or MouseMode.AnyEvent) {
+					e = terminal.EncodeMouseButton(5, release: true, shift: false, meta: false, control: false);
+					terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+				}
+				return true;
+			}
+
+			bool mouseModeWithReleaseEvents = terminal.MouseMode is MouseMode.VT200 or MouseMode.ButtonEventTracking or MouseMode.AnyEvent;
 
 			if  (button != -1){
-				var e = terminal.EncodeButton (button, release: false, shift: false, meta: false, control: false);
-				terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
-				if (terminal.MouseSendsRelease) {
-					e = terminal.EncodeButton (button, release: true, shift: false, meta: false, control: false);
-					terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+				if (!this.mouseEventsIncludePressAndRelease && (action == 1 || action == 2))
+				{
+					// set flag so we don't fake clicking
+					this.mouseEventsIncludePressAndRelease = true;
+				}
+
+				if (this.mouseEventsIncludePressAndRelease && action == 3)
+				{
+					// Ignore click. we're just sending the presses and releases. 
+					return true;
+				}
+				else if (action == 3 && !this.mouseEventsIncludePressAndRelease)
+				{
+					// when we see a click, simulate it by sending a press and release (only if we haven't seen a press and release - those are preferable)
+                    var e = terminal.EncodeMouseButton (button, release: false, shift: false, meta: false, control: false);
+                    terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+
+                    // If in one of the mouse modes where we need to send release events, send those too
+                    if (terminal.MouseMode is MouseMode.VT200 or MouseMode.ButtonEventTracking or MouseMode.AnyEvent) {
+                        e = terminal.EncodeMouseButton(button, release: true, shift: false, meta: false, control: false);
+                        terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+                    }
+				}
+				else if (this.mouseEventsIncludePressAndRelease && mouseModeWithReleaseEvents && action == 1)
+				{
+					if (f.HasFlag(MouseFlags.ReportMousePosition))
+					{
+						terminal.SendMouseMotion(terminal.EncodeMouseButton(button, release: false, false, false, false), mouseEvent.X, mouseEvent.Y);
+						return true;
+					}
+					else
+					{
+                        // press
+                        var e = terminal.EncodeMouseButton (button, release: false, shift: false, meta: false, control: false);
+                        terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
+					}
+				}
+				else if (this.mouseEventsIncludePressAndRelease && mouseModeWithReleaseEvents && action == 2)
+				{
+					// release
+                    var e = terminal.EncodeMouseButton (button, release: true, shift: false, meta: false, control: false);
+                    terminal.SendEvent (e, mouseEvent.X, mouseEvent.Y);
 				}
 				return true;
 			}
@@ -322,7 +425,6 @@ public class TerminalView : View, ITerminalDelegate {
 			// Not currently handled
 
 		}
-		*/
 		return false;
 	}
 
