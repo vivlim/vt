@@ -192,13 +192,16 @@ public class TerminalView : View, ITerminalDelegate {
 				cattr |= 0x10000; // A_STANDOUT
 			Driver.SetAttribute (new Terminal.Gui.Attribute (cattr));
 		} else {
-			if (invert)
+			var fgColor = AnsiColor.ToTerminalGuiColor(fg, ColorScheme.Normal.Foreground);
+			var bgColor = AnsiColor.ToTerminalGuiColor(bg, ColorScheme.Normal.Background);
+
+			if (!invert)
 			{
-                Driver.SetAttribute (ColorScheme.HotFocus);
+				Driver.SetAttribute(new Terminal.Gui.Attribute(fgColor, bgColor));
 			}
 			else
 			{
-                Driver.SetAttribute (ColorScheme.Normal);
+				Driver.SetAttribute(new Terminal.Gui.Attribute(bgColor, fgColor));
 			}
 		}
 	}
